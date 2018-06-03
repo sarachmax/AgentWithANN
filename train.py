@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd 
 #import random
 
-EPISODES = 250
+EPISODES = 300
 MARGIN = 1000
 
 start_index = 4664    #2013.01.02 12:00
@@ -52,13 +52,13 @@ class TrainEnvironment:
         self.mem_reward = 0
         init_state = self.train_data[self.train_index]
         init_state = np.insert(init_state, 0,self.profit)
-        return [init_state]
+        return init_state
     
     def get_action(self,action):
-        if action == 0 :
+        if action == 1 :
             # buy 
             return 1
-        elif action == 1 : 
+        elif action == 2 : 
             # sell 
             return -1
         else : 
@@ -110,7 +110,7 @@ class TrainEnvironment:
         if self.train_index >= self.end_index-1 : 
             self.train_index = self.end_index-1 
         ns = self.train_data[self.train_index]
-        ns = [np.insert(ns, 0, self.profit)]
+        ns = np.insert(ns, 0, self.profit)
         self.calculate_reward(action)
         done = self.done_check()
         return ns, self.reward*MARGIN, done
@@ -128,6 +128,7 @@ def watch_result(episode ,s_time, e_time, c_index, all_index, last_action,reward
     print('end_time: ' + e_time)
     print('-------------------End Check -----------------------')
 
+
     
 if __name__ == "__main__":
     
@@ -144,14 +145,14 @@ if __name__ == "__main__":
     for e in range(EPISODES):
         
         state = env.reset()
-        state = np.reshape(state, (1, state_size, 1))  
+        state = np.reshape(state, [1, state_size]) 
         for t in range(end_index-start_index):
             start_time = str(datetime.datetime.now().time())
             action = agent.act(state)
-             
+            print('action output :', action)
             next_state, reward, done = env.step(action)
             
-            next_state = np.reshape(next_state, (1,state_size,1))
+            next_state = np.reshape(next_state, [1, state_size])
             agent.remember(state, action, reward, next_state, done)
             state = next_state 
             if done:

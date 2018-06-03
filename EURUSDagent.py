@@ -30,15 +30,22 @@ class DQNAgent:
         
     
     
+    def _huber_loss(self, target, prediction):
+        # sqrt(1+error^2)-1
+        error = prediction - target
+        return K.mean(K.sqrt(1+K.square(error))-1, axis=-1)
+
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
         model = Sequential()
-        model.add(LSTM(30, return_sequences = True, input_shape = (self.state_size,1), activation='relu'))
-        model.add(LSTM(18, return_sequences = True,  activation='relu'))
-        model.add(LSTM(6, activation='relu'))
-        model.add(Dense(self.action_size, activation='relu'))
-        model.compile(loss='mean_squared_error', optimizer=Adam(lr=self.learning_rate))
+        model.add(Dense(30, input_dim = self.state_size , activation='relu'))
+        model.add(Dense(18, activation='relu'))
+        model.add(Dense(6, activation='relu'))
+        model.add(Dense(self.action_size, activation='linear'))
+        model.compile(loss=self._huber_loss,
+                      optimizer=Adam(lr=self.learning_rate))
         return model
+    
 
     def update_target_model(self):
         # copy weights from model to target_model
