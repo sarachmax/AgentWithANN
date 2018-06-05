@@ -29,11 +29,12 @@ dataset = pd.read_csv('EURUSD_4H.csv')
 train_data = dataset.iloc[start_index:end_index,5:6]
 
 train_data = np.array(train_data)
-state_size = 60
+state_size = 60 + 1 
+num_data = 60
 X_train = [] 
 all_index = end_index-start_index
-for i in range(state_size, all_index):
-    X_train.append(train_data[i-state_size:i,0])
+for i in range(num_data, all_index):
+    X_train.append(train_data[i-num_data:i,0])
 X_train = np.array(X_train)
 
 
@@ -59,14 +60,15 @@ class TrainEnvironment:
         self.cost_price = 0 
         self.mem_action = 0
         self.mem_reward = 0
-        
-        return [self.train_data[self.train_index]]
+        init_state = self.train_data[self.train_index]
+        init_state = np.insert(init_state, 0,self.profit)
+        return init_state
     
     def get_action(self,action):
-        if action == 0 :
+        if action == 1 :
             # buy 
             return 1
-        elif action == 1 : 
+        elif action == 2 : 
             # sell 
             return -1
         else : 
@@ -79,6 +81,7 @@ class TrainEnvironment:
         if action == self.mem_action :
             self.profit = action*(current_price - self.cost_price)
             self.reward = self.mem_reward + self.profit
+            print('new/mem action : ', action, ' / ', self.mem_action)
         else :  
             if action == 0 : 
                 self.profit = self.mem_action*(current_price - self.cost_price)    
@@ -87,6 +90,7 @@ class TrainEnvironment:
             self.reward = self.profit + self.mem_reward
             self.mem_reward = self.reward 
             self.cost_price = current_price
+            print('new/mem action : ', action, ' / ', self.mem_action)
             self.mem_action = action
 
     def done_check(self):
@@ -111,11 +115,12 @@ class TrainEnvironment:
             return False
         
     def step(self,action):
-        skip = 6
+        skip = 6  # half day 
         self.train_index += skip
         if self.train_index >= self.end_index-1 : 
             self.train_index = self.end_index-1 
-        ns = [self.train_data[self.train_index]]
+        ns = self.train_data[self.train_index]
+        ns = np.insert(ns, 0, self.profit)
         self.calculate_reward(action)
         done = self.done_check()
         return ns, self.reward*MARGIN, done
@@ -140,20 +145,22 @@ if __name__ == "__main__":
     agent.load("agent_model.h5")
     num_index = all_index - state_size
     env = TrainEnvironment(X_train, num_index)
-    batch_size = 10
+    batch_size = 20
     test_profit = []
     test_action = [] 
     
     for e in range(EPISODES):
         state = env.reset()
-        state = np.reshape(state, (1, state_size, 1))
+        state = np.reshape(state, [1, state_size]) 
         test_profit = []
         test_action = [] 
         for t in range(end_index-start_index):
             start_time = str(datetime.datetime.now().time())
-            action = agent.act(state, False)    # test 
+            action = agent.act(state, train = False)
+            print('action output :', action)
             next_state, reward, done = env.step(action)
-            next_state = np.reshape(next_state, (1,state_size,1))
+            
+            next_state = np.reshape(next_state, [1, state_size])
             agent.remember(state, action, reward, next_state, done)
             state = next_state       
             if done:
@@ -172,7 +179,7 @@ if __name__ == "__main__":
             watch_result(e , start_time, end_time, env.train_index, end_index-start_index, env.get_action(action), reward ,env.profit)  
             
             test_profit.append(env.reward*1000)
-            test_action.append(action)
+            test_action.append(action*10)
     test_profit = np.array(test_profit)
     test_action = np.array(test_action)
     

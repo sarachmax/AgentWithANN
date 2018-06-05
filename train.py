@@ -33,7 +33,8 @@ class TrainEnvironment:
         self.train_data = data
         self.train_index = 0 
         self.end_index = num_index-1
-        self.loss_limit = 0.3 # force sell 
+        self.loss_limit = 0.3 # force sell
+        self.profit_limit = 0.05
         
         self.profit = 0
         self.reward = 0
@@ -42,6 +43,7 @@ class TrainEnvironment:
         # portfolio 
         self.cost_price = 0 
         self.mem_action = 0
+        
         
     def reset(self):
         self.train_index = 0 
@@ -82,6 +84,8 @@ class TrainEnvironment:
             self.cost_price = current_price
             print('new/mem action : ', action, ' / ', self.mem_action)
             self.mem_action = action
+        
+         
 
     def done_check(self):
         if self.cost_price != 0 : 
@@ -105,13 +109,15 @@ class TrainEnvironment:
             return False
         
     def step(self,action):
-        skip = 6  # half day 
+        skip = 1  # half day 
         self.train_index += skip
         if self.train_index >= self.end_index-1 : 
             self.train_index = self.end_index-1 
         ns = self.train_data[self.train_index]
         ns = np.insert(ns, 0, self.profit)
-        self.calculate_reward(action)
+        if self.profit_limit*self.cost_price >= self.profit and self.profit > 0 : 
+            self.calculate_reward(0)    #close position
+        self.calculate_reward(action)   
         done = self.done_check()
         return ns, self.reward*MARGIN, done
 
